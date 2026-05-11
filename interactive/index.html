@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transfer Framework — Phase Diagrams</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 14px; background: #fff; color: #222; }
+  h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: #333; }
+  #wrap { display: flex; gap: 12px; align-items: flex-start; }
+  #sidebar { width: 185px; flex-shrink: 0; border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; background: #fafafa; }
+  #sidebar h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.04em; }
+  .btn-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .btn-row button { font-size: 11px; padding: 2px 10px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #fff; color: #333; }
+  .btn-row button:hover { background: #f0f0f0; }
+  .abc-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; padding: 2px 0; }
+  .abc-row input { cursor: pointer; flex-shrink: 0; }
+  .abc-sym { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+  .abc-row label { font-size: 12px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #wd-section { margin-top: 14px; border-top: 1px solid #e8e8e8; padding-top: 10px; }
+  .wd-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .wd-row input { cursor: pointer; flex-shrink: 0; }
+  .wd-row label { font-size: 11px; cursor: pointer; font-family: monospace; color: #444; }
+  .wd-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0; display: inline-block; }
+  #plot { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+<h2>Transfer Framework — Phase Diagrams &nbsp;&middot;&nbsp; experiment=step &nbsp;&middot;&nbsp; filt_thresh=1.35</h2>
+<div id="wrap">
+  <div id="sidebar">
+    <h3>Parameterization</h3>
+    <div class="btn-row">
+      <button onclick="selectAll()">All</button>
+      <button onclick="selectNone()">None</button>
+    </div>
+    <div id="abc-controls"></div>
+    <div id="wd-section">
+      <h3>Weight Decay &lambda;</h3>
+      <div class="btn-row">
+        <button onclick="selectAllWd()">All</button>
+        <button onclick="selectNoneWd()">None</button>
+      </div>
+      <div id="wd-rows"></div>
+    </div>
+  </div>
+  <div id="plot"></div>
+</div>
+
+<script>
+const DATA         = [{"abc_key": "sp", "abc": "SP", "weight_decay": 0.0, "E": 0.048623, "irr_loss_gap": -0.000219, "kappa": -0.227575}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.0001, "E": 0.009553, "irr_loss_gap": 0.151609, "kappa": -1.033047}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.0003, "E": 0.124221, "irr_loss_gap": -9.4e-05, "kappa": 0.478672}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.0006, "E": 0.008325, "irr_loss_gap": 0.154289, "kappa": -3.434958}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.001, "E": 0.011034, "irr_loss_gap": 0.442338, "kappa": -3.562472}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.003, "E": 0.020751, "irr_loss_gap": 1.02885, "kappa": -1.239917}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.006, "E": 0.021162, "irr_loss_gap": 1.295309, "kappa": 1.190968}, {"abc_key": "sp", "abc": "SP", "weight_decay": 0.01, "E": 0.020927, "irr_loss_gap": 1.586189, "kappa": -2.782735}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.0, "E": 0.13511, "irr_loss_gap": -0.004409, "kappa": 0.437204}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.0001, "E": 0.14028, "irr_loss_gap": -0.004409, "kappa": -1.8843}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.0003, "E": 0.215225, "irr_loss_gap": -0.004409, "kappa": 0.393944}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.0006, "E": 0.230587, "irr_loss_gap": -0.004409, "kappa": -0.035257}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.001, "E": 0.196726, "irr_loss_gap": -0.001341, "kappa": -0.152586}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.003, "E": 0.120406, "irr_loss_gap": 0.609666, "kappa": -2.477179}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.006, "E": 0.039239, "irr_loss_gap": 0.399169, "kappa": -2.837675}, {"abc_key": "sp_ln", "abc": "SP+LN", "weight_decay": 0.01, "E": 0.010774, "irr_loss_gap": -0.00033, "kappa": -0.345442}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.0003, "E": 0.009651, "irr_loss_gap": -0.000697, "kappa": 0.617638}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.0006, "E": 0.008876, "irr_loss_gap": -0.000422, "kappa": 0.234264}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.001, "E": 0.009778, "irr_loss_gap": 0.578016, "kappa": 0.610739}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.003, "E": 0.011746, "irr_loss_gap": 0.935952, "kappa": 0.22821}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.006, "E": 0.038353, "irr_loss_gap": 1.383832, "kappa": -3.205758}, {"abc_key": "sp_attn", "abc": "SP+Attn", "weight_decay": 0.01, "E": 0.04311, "irr_loss_gap": 1.66336, "kappa": -3.340766}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.0, "E": 0.024627, "irr_loss_gap": 0.214312, "kappa": -0.690531}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.0001, "E": 0.020733, "irr_loss_gap": 0.417034, "kappa": -2.446662}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.0003, "E": 0.026172, "irr_loss_gap": 0.452395, "kappa": -3.266039}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.0006, "E": 0.007329, "irr_loss_gap": 0.541114, "kappa": 0.689422}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.001, "E": 0.007472, "irr_loss_gap": 0.818095, "kappa": 0.692971}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.003, "E": 0.014187, "irr_loss_gap": 1.161513, "kappa": 0.956007}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.006, "E": 0.015748, "irr_loss_gap": 1.43647, "kappa": -1.197873}, {"abc_key": "sp_attn_last", "abc": "SP+Attn+Last", "weight_decay": 0.01, "E": 0.035543, "irr_loss_gap": 1.69408, "kappa": -1.098665}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.0, "E": 0.00037, "irr_loss_gap": 0.029714, "kappa": -3.158076}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.0001, "E": 0.00042, "irr_loss_gap": 0.100669, "kappa": -0.871657}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.0003, "E": 0.000421, "irr_loss_gap": 0.177629, "kappa": -3.374412}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.0006, "E": 0.000614, "irr_loss_gap": 0.243416, "kappa": -3.346113}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.001, "E": 0.000835, "irr_loss_gap": 0.404422, "kappa": -3.290013}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.003, "E": 0.003446, "irr_loss_gap": 0.728437, "kappa": 0.836878}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.006, "E": 0.011173, "irr_loss_gap": 1.029284, "kappa": 0.758267}, {"abc_key": "sp_attn_embd", "abc": "SP+Attn+Embd", "weight_decay": 0.01, "E": 0.019297, "irr_loss_gap": 1.249639, "kappa": -1.633308}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.0, "E": 0.103104, "irr_loss_gap": -0.004409, "kappa": -0.552592}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.0001, "E": 0.162583, "irr_loss_gap": -0.004409, "kappa": -0.748025}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.0003, "E": 0.072888, "irr_loss_gap": -0.001437, "kappa": -0.669047}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.0006, "E": 0.125088, "irr_loss_gap": -0.00144, "kappa": -0.001707}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.001, "E": 0.091326, "irr_loss_gap": -0.001444, "kappa": -0.44344}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.003, "E": 0.035888, "irr_loss_gap": -0.003036, "kappa": -0.829594}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.006, "E": 0.014934, "irr_loss_gap": -0.002189, "kappa": -4.096858}, {"abc_key": "sp_attn_ln", "abc": "SP+Attn+LN", "weight_decay": 0.01, "E": 0.024853, "irr_loss_gap": 0.079576, "kappa": -3.11248}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.0, "E": 0.032138, "irr_loss_gap": 0.119888, "kappa": -1.130544}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.0001, "E": 0.005594, "irr_loss_gap": 0.088216, "kappa": 0.277974}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.0003, "E": 0.005845, "irr_loss_gap": 0.112926, "kappa": -3.468951}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.0006, "E": 0.006989, "irr_loss_gap": 0.084351, "kappa": -3.499654}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.001, "E": 0.009974, "irr_loss_gap": 0.092785, "kappa": -3.444021}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.003, "E": 0.020252, "irr_loss_gap": 0.125943, "kappa": -3.295211}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.006, "E": 0.011095, "irr_loss_gap": 0.147256, "kappa": -3.427027}, {"abc_key": "sp_lr", "abc": "\u03bcP-Last", "weight_decay": 0.01, "E": 0.00638, "irr_loss_gap": 0.218456, "kappa": 0.546204}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.0, "E": 0.002909, "irr_loss_gap": -8.9e-05, "kappa": -0.240519}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.0001, "E": 0.000914, "irr_loss_gap": 0.047521, "kappa": -3.483952}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.0003, "E": 0.000453, "irr_loss_gap": 0.071747, "kappa": -3.421335}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.0006, "E": 0.000596, "irr_loss_gap": 0.190625, "kappa": 0.544224}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.001, "E": 0.000514, "irr_loss_gap": 0.267632, "kappa": -2.333312}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.003, "E": 0.002189, "irr_loss_gap": 0.590964, "kappa": -3.267258}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.006, "E": 0.007236, "irr_loss_gap": 0.900358, "kappa": -1.717927}, {"abc_key": "sp_embd", "abc": "SP+Embd", "weight_decay": 0.01, "E": 0.021841, "irr_loss_gap": 1.148013, "kappa": -1.501897}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.0001, "E": 0.022743, "irr_loss_gap": 0.303274, "kappa": -1.249332}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.0006, "E": 0.010383, "irr_loss_gap": 0.25958, "kappa": -2.574429}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.001, "E": 0.010351, "irr_loss_gap": 0.575577, "kappa": -2.307944}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.003, "E": 0.020812, "irr_loss_gap": 1.053697, "kappa": 1.175818}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.006, "E": 0.022996, "irr_loss_gap": 1.304022, "kappa": 0.973747}, {"abc_key": "sp_last", "abc": "SP+Last", "weight_decay": 0.01, "E": 0.024886, "irr_loss_gap": 1.567284, "kappa": -2.545982}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.0, "E": 0.076502, "irr_loss_gap": 0.606995, "kappa": -2.891711}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.0001, "E": 0.071247, "irr_loss_gap": 0.688203, "kappa": -2.585828}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.0003, "E": 0.050307, "irr_loss_gap": 0.635726, "kappa": -2.301368}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.0006, "E": 0.025093, "irr_loss_gap": 0.569532, "kappa": -1.696167}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.001, "E": 0.04667, "irr_loss_gap": 0.669841, "kappa": -1.868755}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.003, "E": 0.01735, "irr_loss_gap": 0.321429, "kappa": 0.814829}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.006, "E": 0.008173, "irr_loss_gap": 0.295545, "kappa": 0.775629}, {"abc_key": "sp_embd_ln", "abc": "SP+Embd+LN", "weight_decay": 0.01, "E": 0.023969, "irr_loss_gap": 0.310686, "kappa": 0.595097}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.0, "E": 0.001402, "irr_loss_gap": 0.062938, "kappa": 0.537765}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.0001, "E": 0.00668, "irr_loss_gap": 0.093403, "kappa": -3.25687}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.0003, "E": 0.001085, "irr_loss_gap": 0.125918, "kappa": -0.42505}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.0006, "E": 0.001221, "irr_loss_gap": 0.182512, "kappa": 0.591703}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.001, "E": 0.000944, "irr_loss_gap": 0.301476, "kappa": -0.535896}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.003, "E": 0.0037, "irr_loss_gap": 0.6129, "kappa": 0.709422}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.006, "E": 0.008429, "irr_loss_gap": 0.89977, "kappa": 0.82953}, {"abc_key": "sp_embd_last", "abc": "SP+Embd+Last", "weight_decay": 0.01, "E": 0.017606, "irr_loss_gap": 1.139134, "kappa": -2.727457}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.0, "E": 0.188312, "irr_loss_gap": -0.004409, "kappa": 0.777311}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.0001, "E": 0.148555, "irr_loss_gap": -0.004409, "kappa": -0.160723}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.0003, "E": 0.164538, "irr_loss_gap": -0.004407, "kappa": -2.128777}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.0006, "E": 0.100697, "irr_loss_gap": -0.004409, "kappa": -0.254454}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.001, "E": 0.120975, "irr_loss_gap": -0.001342, "kappa": -0.121001}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.003, "E": 0.054733, "irr_loss_gap": 0.493904, "kappa": -3.104737}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.006, "E": 0.030174, "irr_loss_gap": 0.551044, "kappa": -3.723594}, {"abc_key": "sp_ln_last", "abc": "SP+LN+Last", "weight_decay": 0.01, "E": 0.028747, "irr_loss_gap": 0.574916, "kappa": -3.672065}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.0, "E": 0.065035, "irr_loss_gap": -0.001428, "kappa": -0.827083}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.0001, "E": 0.034304, "irr_loss_gap": -0.00145, "kappa": -0.885759}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.0003, "E": 0.101029, "irr_loss_gap": -0.001445, "kappa": -0.502198}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.0006, "E": 0.067314, "irr_loss_gap": -0.001435, "kappa": -0.350538}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.001, "E": 0.062264, "irr_loss_gap": 0.031109, "kappa": 0.942349}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.003, "E": 0.025857, "irr_loss_gap": 0.014552, "kappa": -3.365059}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.006, "E": 0.02615, "irr_loss_gap": 0.5879, "kappa": 0.06947}, {"abc_key": "mup_sp_embd", "abc": "\u03bcP-Embd", "weight_decay": 0.01, "E": 0.012401, "irr_loss_gap": 0.695013, "kappa": 0.160572}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.0, "E": 0.046902, "irr_loss_gap": 0.312131, "kappa": -0.031057}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.0001, "E": 0.061079, "irr_loss_gap": 0.231245, "kappa": -0.994554}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.0003, "E": 0.016535, "irr_loss_gap": 0.442117, "kappa": -1.646893}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.0006, "E": 0.007026, "irr_loss_gap": 0.481366, "kappa": -2.550132}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.001, "E": 0.013232, "irr_loss_gap": 0.359908, "kappa": 0.641903}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.003, "E": 0.033647, "irr_loss_gap": 0.344063, "kappa": 0.557303}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.006, "E": 0.012816, "irr_loss_gap": 0.403307, "kappa": 0.855915}, {"abc_key": "mup_sp_attn", "abc": "\u03bcP-Attn", "weight_decay": 0.01, "E": 0.02156, "irr_loss_gap": 0.319005, "kappa": 0.46471}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.0, "E": 0.007159, "irr_loss_gap": 0.001202, "kappa": -0.741246}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.0001, "E": 0.001036, "irr_loss_gap": 0.043942, "kappa": 0.622626}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.0003, "E": 0.00088, "irr_loss_gap": 0.144223, "kappa": -3.278315}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.0006, "E": 0.000831, "irr_loss_gap": 0.259864, "kappa": -2.631946}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.001, "E": 0.000773, "irr_loss_gap": 0.331843, "kappa": -2.600562}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.003, "E": 0.004723, "irr_loss_gap": 0.698651, "kappa": -0.122735}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.006, "E": 0.00959, "irr_loss_gap": 1.006086, "kappa": -2.064233}, {"abc_key": "mup_sp_ln", "abc": "\u03bcP-LN", "weight_decay": 0.01, "E": 0.014532, "irr_loss_gap": 1.231403, "kappa": -1.612228}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.0, "E": 0.00108, "irr_loss_gap": -9.8e-05, "kappa": -3.587432}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.0001, "E": 0.000557, "irr_loss_gap": -0.000167, "kappa": -1.322459}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.0003, "E": 0.000549, "irr_loss_gap": 0.047633, "kappa": -0.43104}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.0006, "E": 0.000775, "irr_loss_gap": 0.073404, "kappa": -2.427483}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.001, "E": 0.000749, "irr_loss_gap": 0.091858, "kappa": -3.378835}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.003, "E": 0.003989, "irr_loss_gap": 0.202338, "kappa": -2.418849}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.006, "E": 0.00343, "irr_loss_gap": 0.240701, "kappa": -2.705308}, {"abc_key": "mup_sp", "abc": "\u03bcP", "weight_decay": 0.01, "E": 0.004416, "irr_loss_gap": 0.2688, "kappa": 0.583891}];
+const WD_VALUES    = [0.0, 0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01];
+const MARKER_INFO  = [{"key": "sp", "display": "SP", "symbol": "circle", "unicode": "\u25cf"}, {"key": "mup_sp", "display": "\u03bcP", "symbol": "square", "unicode": "\u25a0"}, {"key": "sp_ln", "display": "SP+LN", "symbol": "diamond", "unicode": "\u25c6"}, {"key": "sp_attn", "display": "SP+Attn", "symbol": "triangle-down", "unicode": "\u25bc"}, {"key": "sp_attn_last", "display": "SP+Attn+Last", "symbol": "square-open", "unicode": "\u25a1"}, {"key": "sp_attn_embd", "display": "SP+Attn+Embd", "symbol": "cross", "unicode": "+"}, {"key": "sp_attn_ln", "display": "SP+Attn+LN", "symbol": "diamond-open", "unicode": "\u25c7"}, {"key": "sp_lr", "display": "\u03bcP-Last", "symbol": "circle-open", "unicode": "\u25cb"}, {"key": "sp_embd", "display": "SP+Embd", "symbol": "x", "unicode": "\u2715"}, {"key": "sp_last", "display": "SP+Last", "symbol": "star", "unicode": "\u2605"}, {"key": "sp_embd_ln", "display": "SP+Embd+LN", "symbol": "triangle-up-open", "unicode": "\u25b3"}, {"key": "sp_embd_last", "display": "SP+Embd+Last", "symbol": "triangle-down-open", "unicode": "\u25bd"}, {"key": "sp_ln_last", "display": "SP+LN+Last", "symbol": "star-open", "unicode": "\u2606"}, {"key": "mup_sp_embd", "display": "\u03bcP-Embd", "symbol": "pentagon", "unicode": "\u2b20"}, {"key": "mup_sp_attn", "display": "\u03bcP-Attn", "symbol": "hexagram", "unicode": "\u2721"}, {"key": "mup_sp_ln", "display": "\u03bcP-LN", "symbol": "triangle-up", "unicode": "\u25b2"}];
+const WD_PALETTE   = {"0.0": "#1a1a1a", "0.0001": "#c6dbef", "0.0003": "#9ecae1", "0.0006": "#6baed6", "0.001": "#4292c6", "0.003": "#2171b5", "0.006": "#08519c", "0.01": "#08306b"};
+
+function r4(w) { return parseFloat(w.toFixed(4)); }
+
+function wdColor(wd) {
+  const key   = r4(wd);
+  const pkeys = Object.keys(WD_PALETTE).map(Number);
+  const best  = pkeys.reduce((a, b) => Math.abs(b - key) < Math.abs(a - key) ? b : a);
+  return Math.abs(best - key) < 1e-7 ? WD_PALETTE[best] : '#999';
+}
+
+// ── Filter state ──────────────────────────────────────────────────────────────
+const activeAbcs = new Set(MARKER_INFO.map(m => m.key));
+const activeWds  = new Set(WD_VALUES.map(w => r4(w)));
+
+// ── Build traces from current filter state ────────────────────────────────────
+function buildTraces() {
+  const filtered = DATA.filter(d =>
+    activeAbcs.has(d.abc_key) && activeWds.has(r4(d.weight_decay))
+  );
+  const traces = [];
+  MARKER_INFO.forEach(info => {
+    const pts = filtered.filter(d => d.abc_key === info.key);
+    if (pts.length === 0) return;
+    const col = pts.map(d => wdColor(d.weight_decay));
+    const txt = pts.map(d =>
+      '<b>' + info.display + '</b><br>' +
+      'λ = ' + d.weight_decay + '<br>' +
+      'E = ' + d.E.toExponential(3) + '<br>' +
+      'R(∞) = ' + d.irr_loss_gap.toFixed(5) + '<br>' +
+      'κ = ' + d.kappa.toFixed(5)
+    );
+    const mk = c => ({ symbol: info.symbol, size: 10, color: c, line: { color: '#333', width: 0.8 } });
+    const base = {
+      name: info.display, legendgroup: info.key,
+      mode: 'markers', type: 'scatter',
+      hovertemplate: '%{text}<extra></extra>',
+      showlegend: false, text: txt,
+    };
+    traces.push({ ...base, x: pts.map(d => d.E),            y: pts.map(d => d.kappa),       marker: mk(col), xaxis: 'x',  yaxis: 'y'  });
+    traces.push({ ...base, x: pts.map(d => d.E),            y: pts.map(d => d.irr_loss_gap), marker: mk(col), xaxis: 'x2', yaxis: 'y2' });
+    traces.push({ ...base, x: pts.map(d => d.irr_loss_gap), y: pts.map(d => d.kappa),        marker: mk(col), xaxis: 'x3', yaxis: 'y3' });
+  });
+  return traces;
+}
+
+const layout = {
+  grid: { rows: 1, columns: 3, pattern: 'independent' },
+  xaxis:  { title: { text: 'E' },    type: 'log', showgrid: true, zeroline: false },
+  yaxis:  { title: { text: 'κ' },             showgrid: true, zeroline: true,  zerolinecolor: '#aaa' },
+  xaxis2: { title: { text: 'E' },    type: 'log', showgrid: true, zeroline: false },
+  yaxis2: { title: { text: 'R(∞)' },          showgrid: true, zeroline: true,  zerolinecolor: '#aaa' },
+  xaxis3: { title: { text: 'R(∞)' },          showgrid: true, zeroline: true,  zerolinecolor: '#aaa' },
+  yaxis3: { title: { text: 'κ' },             showgrid: true, zeroline: true,  zerolinecolor: '#aaa' },
+  showlegend: false,
+  margin: { l: 65, r: 20, t: 30, b: 70 },
+  height: 480,
+};
+
+let _ready = false;
+function rebuildPlot() {
+  const fn = _ready ? Plotly.react : Plotly.newPlot;
+  fn('plot', buildTraces(), layout, { responsive: true });
+  _ready = true;
+}
+
+// ── Build sidebar: parameterizations ─────────────────────────────────────────
+const ctrl = document.getElementById('abc-controls');
+MARKER_INFO.forEach((info, i) => {
+  const row = document.createElement('div');
+  row.className = 'abc-row';
+  row.innerHTML =
+    '<input type="checkbox" id="cba' + i + '" checked onchange="toggleAbc(' + i + ', this.checked)">' +
+    '<span class="abc-sym">' + info.unicode + '</span>' +
+    '<label for="cba' + i + '" title="' + info.display + '">' + info.display + '</label>';
+  ctrl.appendChild(row);
+});
+
+function toggleAbc(i, checked) {
+  const key = MARKER_INFO[i].key;
+  checked ? activeAbcs.add(key) : activeAbcs.delete(key);
+  rebuildPlot();
+}
+function selectAll() {
+  MARKER_INFO.forEach((info, i) => {
+    activeAbcs.add(info.key);
+    document.getElementById('cba' + i).checked = true;
+  });
+  rebuildPlot();
+}
+function selectNone() {
+  MARKER_INFO.forEach((info, i) => {
+    activeAbcs.delete(info.key);
+    document.getElementById('cba' + i).checked = false;
+  });
+  rebuildPlot();
+}
+
+// ── Build sidebar: weight decay ───────────────────────────────────────────────
+const wdContainer = document.getElementById('wd-rows');
+WD_VALUES.forEach((wd, j) => {
+  const row = document.createElement('div');
+  row.className = 'wd-row';
+  row.innerHTML =
+    '<input type="checkbox" id="cbw' + j + '" checked onchange="toggleWd(' + wd + ', this.checked)">' +
+    '<span class="wd-dot" style="background:' + wdColor(wd) + '"></span>' +
+    '<label for="cbw' + j + '">' + wd + '</label>';
+  wdContainer.appendChild(row);
+});
+
+function toggleWd(wd, checked) {
+  checked ? activeWds.add(r4(wd)) : activeWds.delete(r4(wd));
+  rebuildPlot();
+}
+function selectAllWd() {
+  WD_VALUES.forEach((wd, j) => {
+    activeWds.add(r4(wd));
+    document.getElementById('cbw' + j).checked = true;
+  });
+  rebuildPlot();
+}
+function selectNoneWd() {
+  WD_VALUES.forEach((wd, j) => {
+    activeWds.delete(r4(wd));
+    document.getElementById('cbw' + j).checked = false;
+  });
+  rebuildPlot();
+}
+
+// ── Initial render ────────────────────────────────────────────────────────────
+rebuildPlot();
+</script>
+</body>
+</html>
