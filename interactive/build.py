@@ -28,12 +28,12 @@ MARKER_MAP = {
     'sp_attn':       {'symbol': 'triangle-down', 'unicode': '▼'},
     'sp_last':       {'symbol': 'star',          'unicode': '★'},
     'mup_sp_attn':   {'symbol': 'hexagram',      'unicode': '✡'},
-    'sp_lr':         {'symbol': 'circle-open',   'unicode': '○'},
-    'sp_attn_last':  {'symbol': 'square-open',   'unicode': '□'},
-    'sp_attn_ln':    {'symbol': 'diamond-open',  'unicode': '◇'},
-    'sp_embd_ln':    {'symbol': 'triangle-up-open',   'unicode': '△'},
-    'sp_embd_last':  {'symbol': 'triangle-down-open', 'unicode': '▽'},
-    'sp_ln_last':    {'symbol': 'star-open',     'unicode': '☆'},
+    'sp_lr':         {'symbol': 'hexagon',        'unicode': '⬡'},
+    'sp_attn_last':  {'symbol': 'hexagon2',       'unicode': '⬢'},
+    'sp_attn_ln':    {'symbol': 'octagon',        'unicode': '⯃'},
+    'sp_embd_ln':    {'symbol': 'triangle-left',  'unicode': '◀'},
+    'sp_embd_last':  {'symbol': 'triangle-right', 'unicode': '▶'},
+    'sp_ln_last':    {'symbol': 'bowtie',         'unicode': '⧖'},
 }
 DEFAULT_MARKER = {'symbol': 'circle-open', 'unicode': '○'}
 
@@ -218,6 +218,13 @@ function wdColor(wd) {{
 const activeAbcs = new Set(MARKER_INFO.map(m => m.key));
 const activeWds  = new Set(WD_VALUES.map(w => r4(w)));
 
+// ── Symlog transform for R(∞) ─────────────────────────────────────────────────
+const LINTHRESH = 0.01;
+function symlog(x) {{
+  return x === 0 ? 0 : Math.sign(x) * Math.log10(1 + Math.abs(x) / LINTHRESH);
+}}
+
+
 // ── Build traces from current filter state ────────────────────────────────────
 function buildTraces() {{
   const filtered = DATA.filter(d =>
@@ -242,24 +249,94 @@ function buildTraces() {{
       hovertemplate: '%{{text}}<extra></extra>',
       showlegend: false, text: txt,
     }};
-    traces.push({{ ...base, x: pts.map(d => d.E),            y: pts.map(d => d.kappa),       marker: mk(col), xaxis: 'x',  yaxis: 'y'  }});
-    traces.push({{ ...base, x: pts.map(d => d.E),            y: pts.map(d => d.irr_loss_gap), marker: mk(col), xaxis: 'x2', yaxis: 'y2' }});
-    traces.push({{ ...base, x: pts.map(d => d.irr_loss_gap), y: pts.map(d => d.kappa),        marker: mk(col), xaxis: 'x3', yaxis: 'y3' }});
+    const sR = pts.map(d => symlog(d.irr_loss_gap));
+    traces.push({{ ...base, x: pts.map(d => d.E), y: pts.map(d => d.kappa), marker: mk(col), xaxis: 'x',  yaxis: 'y'  }});
+    traces.push({{ ...base, x: pts.map(d => d.E), y: sR,                    marker: mk(col), xaxis: 'x2', yaxis: 'y2' }});
+    traces.push({{ ...base, x: sR,                y: pts.map(d => d.kappa), marker: mk(col), xaxis: 'x3', yaxis: 'y3' }});
   }});
   return traces;
 }}
 
+// Fixed axis ranges computed once from the full dataset
+function logPadRange(vals, pad) {{
+  const logs = vals.filter(v => v > 0).map(v => Math.log10(v));
+  const mn = Math.min(...logs), mx = Math.max(...logs);
+  return [mn - pad, mx + pad];
+}}
+function linPadRange(vals, pad) {{
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const p = (mx - mn) * pad;
+  return [mn - p, mx + p];
+}}
+const rangeE = logPadRange(DATA.map(d => d.E), 0.05);
+const rangeK = linPadRange(DATA.map(d => d.kappa), 0.05);
+const _allSR  = DATA.map(d => symlog(d.irr_loss_gap));
+const rangeR  = linPadRange(_allSR, 0.05);
+const _rTickOrig = [0, 0.01, 0.1, 1];
+const _rTickVals = _rTickOrig.map(symlog);
+const _rTickText = ['0', '0.01', '0.1', '1'];
+
+const _tf = {{ size: 20 }};  // axis title font
+const _kf = {{ size: 16 }};  // tick font
+
+// ── Gradient backgrounds ──────────────────────────────────────────────────────
+function _toAxesLog(val, lr) {{ return (Math.log10(val) - lr[0]) / (lr[1] - lr[0]); }}
+function _toAxesLin(val, lr) {{ return (val - lr[0]) / (lr[1] - lr[0]); }}
+function _toAxesSymlog(val, lr) {{ return (symlog(val) - lr[0]) / (lr[1] - lr[0]); }}
+
+function _makeGradientURL(p1, p2, res, maxA, scale) {{
+  const canvas = document.createElement('canvas');
+  canvas.width = res; canvas.height = res;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(res, res);
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+  const len = Math.hypot(dx, dy);
+  const goodSign = Math.sign(((0 - p1[0]) * (-dy) + (0 - p1[1]) * dx) / len);
+  for (let row = 0; row < res; row++) {{
+    for (let col = 0; col < res; col++) {{
+      const gx = col / (res - 1);
+      const gy = 1 - row / (res - 1);
+      const sd = ((gx - p1[0]) * (-dy) + (gy - p1[1]) * dx) / len;
+      const a = Math.round(Math.min(Math.abs(sd) * scale, maxA) * 255);
+      const ix = (row * res + col) * 4;
+      if (Math.sign(sd) === goodSign) {{
+        img.data[ix] = 0; img.data[ix+1] = 140; img.data[ix+2] = 0;
+      }} else {{
+        img.data[ix] = 191; img.data[ix+1] = 0; img.data[ix+2] = 0;
+      }}
+      img.data[ix+3] = a;
+    }}
+  }}
+  ctx.putImageData(img, 0, 0);
+  return canvas.toDataURL('image/png');
+}}
+
+const _eAt001 = _toAxesLog(0.01, rangeE);
+const _kAt0 = _toAxesLin(0.0, rangeK);
+const _rAt01 = _toAxesSymlog(0.1, rangeR);
+const _gradURL1 = _makeGradientURL([_eAt001, 0], [0, _kAt0], 200, 0.12, 0.45);
+const _gradURL2 = _makeGradientURL([_eAt001, 0], [0, _rAt01], 200, 0.12, 0.45);
+const _gradURL3 = _makeGradientURL([_rAt01, 0], [0, _kAt0], 200, 0.12, 0.45);
+function _gradImg(src, xr, yr) {{
+  return {{ source: src, xref: xr, yref: yr, x: 0, y: 0, sizex: 1, sizey: 1, xanchor: 'left', yanchor: 'bottom', sizing: 'stretch', layer: 'below', opacity: 1 }};
+}}
+
 const layout = {{
   grid: {{ rows: 1, columns: 3, pattern: 'independent' }},
-  xaxis:  {{ title: {{ text: 'E' }},    type: 'log', showgrid: true, zeroline: false }},
-  yaxis:  {{ title: {{ text: 'κ' }},             showgrid: true, zeroline: true,  zerolinecolor: '#aaa' }},
-  xaxis2: {{ title: {{ text: 'E' }},    type: 'log', showgrid: true, zeroline: false }},
-  yaxis2: {{ title: {{ text: 'R(∞)' }},          showgrid: true, zeroline: true,  zerolinecolor: '#aaa' }},
-  xaxis3: {{ title: {{ text: 'R(∞)' }},          showgrid: true, zeroline: true,  zerolinecolor: '#aaa' }},
-  yaxis3: {{ title: {{ text: 'κ' }},             showgrid: true, zeroline: true,  zerolinecolor: '#aaa' }},
+  xaxis:  {{ title: {{ text: 'E',    font: _tf }}, type: 'log', dtick: 1, range: rangeE, tickfont: _kf, showgrid: true, zeroline: false, mirror: true, showline: true, linecolor: '#333' }},
+  yaxis:  {{ title: {{ text: 'κ',    font: _tf }},              range: rangeK, tickfont: _kf, showgrid: true, zeroline: true,  zerolinecolor: '#aaa', mirror: true, showline: true, linecolor: '#333' }},
+  xaxis2: {{ title: {{ text: 'E',    font: _tf }}, type: 'log', dtick: 1, range: rangeE, tickfont: _kf, showgrid: true, zeroline: false, mirror: true, showline: true, linecolor: '#333' }},
+  yaxis2: {{ title: {{ text: 'R(∞)', font: _tf }}, range: rangeR, tickmode: 'array', tickvals: _rTickVals, ticktext: _rTickText, tickfont: _kf, showgrid: true, zeroline: true, zerolinecolor: '#aaa', mirror: true, showline: true, linecolor: '#333' }},
+  xaxis3: {{ title: {{ text: 'R(∞)', font: _tf }}, range: rangeR, tickmode: 'array', tickvals: _rTickVals, ticktext: _rTickText, tickfont: _kf, showgrid: true, zeroline: true, zerolinecolor: '#aaa', mirror: true, showline: true, linecolor: '#333' }},
+  yaxis3: {{ title: {{ text: 'κ',    font: _tf }},              range: rangeK, tickfont: _kf, showgrid: true, zeroline: true,  zerolinecolor: '#aaa', mirror: true, showline: true, linecolor: '#333' }},
   showlegend: false,
-  margin: {{ l: 65, r: 20, t: 30, b: 70 }},
+  margin: {{ l: 65, r: 20, t: 30, b: 80 }},
   height: 480,
+  images: [
+    _gradImg(_gradURL1, 'x domain', 'y domain'),
+    _gradImg(_gradURL2, 'x2 domain', 'y2 domain'),
+    _gradImg(_gradURL3, 'x3 domain', 'y3 domain'),
+  ],
 }};
 
 let _ready = false;
